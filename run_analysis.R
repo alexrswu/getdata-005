@@ -93,3 +93,13 @@ featureCode <- dtFeatures[, paste0("V", featureNumber)]
 head(dtFeatures)
 select <- c(key(dtFinal), featureCode)
 dtFinal <- dtFinal[, select, with=FALSE]
+
+
+##
+# 3rd script goal
+# Uses descriptive activity names to name the activities in the data set
+##
+
+# used to add descriptive names to the activities
+dtActivityNames <- fread(file.path(dataSetPath, "activity_labels.txt")) 
+setnames(dtActivityNames, names(dtActivityNames), c("activityNumber", "activityName")) 
