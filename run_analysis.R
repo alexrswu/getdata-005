@@ -78,3 +78,18 @@ dtFinal <- cbind(dtAll, dt)
 dtFinal <- data.table(dtFinal) #convert data.frame to data.table
 
 setkey(dtFinal, subject, activityNumber) #sorts a data.table and marks it as sorted
+
+##
+# 2nd script goal
+# Extracts only the measurements on the mean and standard deviation for each measurement.
+##
+dtFeatures <- fread(file.path(dataSetPath, "features.txt"))
+setnames(dtFeatures, names(dtFeatures), c("featureNumber", "featureName"))
+
+# subsetting only measurements for the mean and standard deviation.
+dtExtractedFeatures <- dtFeatures[grepl("mean|std", featureName)]
+
+featureCode <- dtFeatures[, paste0("V", featureNumber)]
+head(dtFeatures)
+select <- c(key(dtFinal), featureCode)
+dtFinal <- dtFinal[, select, with=FALSE]
