@@ -12,15 +12,15 @@
 ###
 
 # Check required R libraries
-if (!require("data.table")) install.packages("data.table")
-if (!require("reshape2")) install.packages("reshape2")
+if(!require("data.table")) install.packages("data.table")
+if(!require("reshape2")) install.packages("reshape2")
 
 # Load needed packages
 require("data.table")
 require("reshape2")
 
 # Set current working directory
-setwd("/Users/mirco/Dropbox/E-Courses/Coursera/DataScience/3. Getting and Cleaning Data/Project/getdata-005")
+setwd("_path_to_where_you_save_this_file_")
 
 # Get Dataset file and save it to the current working directory
 fileUrl <- "https://d396qusza40orc.cloudfront.net/getdata%2Fprojectfiles%2FUCI%20HAR%20Dataset.zip"
@@ -35,6 +35,7 @@ if(!file.exists(filename)) {
 # Extracts DatSet file and save it into 'data' folder
 if(!file.exists(dataFolderName)){
         dir.create(dataFolderName)
+} else {
         if(!file.exists(dataSetPath)) {
                 unzipCmd <- paste(paste("unzip", filename), paste0("-d ./", dataFolderName))
                 system(unzipCmd)
@@ -73,11 +74,11 @@ setnames(dtActivity, "V1", "activityNumber") #setnames(x,old,new)
 
 dt <- rbind(dtTrain, dtTest) #combining Objects by rows
 dtAll <- cbind(dtSubject, dtActivity) #combining Objects by columns
+
 dtFinal <- cbind(dtAll, dt)
-
 dtFinal <- data.table(dtFinal) #convert data.frame to data.table
-
 setkey(dtFinal, subject, activityNumber) #sorts a data.table and marks it as sorted
+
 
 ##
 # 2nd script goal
@@ -90,7 +91,6 @@ setnames(dtFeatures, names(dtFeatures), c("featureNumber", "featureName"))
 dtExtractedFeatures <- dtFeatures[grepl("mean|std", featureName)]
 
 featureCode <- dtFeatures[, paste0("V", featureNumber)]
-head(dtFeatures)
 select <- c(key(dtFinal), featureCode)
 dtFinal <- dtFinal[, select, with=FALSE]
 
@@ -99,7 +99,60 @@ dtFinal <- dtFinal[, select, with=FALSE]
 # 3rd script goal
 # Uses descriptive activity names to name the activities in the data set
 ##
-
-# used to add descriptive names to the activities
 dtActivityNames <- fread(file.path(dataSetPath, "activity_labels.txt")) 
 setnames(dtActivityNames, names(dtActivityNames), c("activityNumber", "activityName")) 
+
+
+##
+# 4th script goal
+# Appropriately labels the data set with descriptive variable names
+##
+dtFinal <- merge(dtFinal, dtActivityNames, by="activityNumber", all.x=TRUE)
+setkey(dtFinal, subject, activityNumber, activityName)
+
+dtFinal <- data.table(melt(dtFinal, key(dtFinal), variable.name="featureCode"))
+dtFinal <- merge(dtFinal, dtFeatures[, list(featureNumber, featureCode, featureName)], by="featureCode", all.x=TRUE)
+
+dtFinal$activity <- factor(dtFinal$activityName)
+dtFinal$feature <- factor(dtFinal$featureName)
+
+# features with 1 category
+dtFinal$jerkFeature <- factor(grepl("Jerk", dtFinal$feature), labels=c(NA, "Jerk"))
+dtFinal$magnitudeFeature <- factor(grepl("Mag", dtFinal$feature), labels=c(NA, "Magnitude"))
+
+# features with 2 categories
+m <- matrix(1:2, nrow=2)
+
+grepped <- c(grepl("^t", dtFinal$feature), grepl("^f", dtFinal$feature))
+mx <- matrix(grepped, ncol=nrow(m))
+dtFinal$domainFeature <- factor(mx %*% m, labels=c(NA, "Time", "Frequency"))
+
+grepped <- c(grepl("Acc", dtFinal$feature), grepl("Gyro", dtFinal$feature))
+mx <- matrix(grepped, ncol=nrow(m))
+dtFinal$instrumentsFeature <- factor(mx %*% m, labels=c(NA, "Accelerometer", "Gyroscope"))
+
+grepped <- c(grepl("BodyAcc", dtFinal$feature), grepl("GravityAcc", dtFinal$feature))
+mx <- matrix(grepped, ncol=nrow(m))
+dtFinal$accelerationFeature <- factor(mx %*% m, labels=c(NA, "Body", "Gravity"))
+
+grepped <- c(grepl("mean()", dtFinal$feature), grepl("std()", dtFinal$feature))
+mx <- matrix(grepped, ncol=nrow(m))
+dtFinal$variableFeature <- factor(mx %*% m, labels=c(NA, "Mean", "Standard Deviation"))
+
+# features with 3 categories
+m <- matrix(1:3, nrow=3)
+
+grepped <- c(grepl("-X", dtFinal$feature), grepl("-Y", dtFinal$feature), grepl("-Z", dtFinal$feature))
+mx <- matrix(grepped, ncol = nrow(m))
+
+dtFinal$axisFeature <- factor(mx %*% m, labels=c(NA, "X", "Y", "Z"))
+
+##
+# 5th script goal
+# Creates a second, independent tidy data set with the average of each variable for each activity and each subject
+##
+setkey(dtFinal, subject, activity, domainFeature, accelerationFeature, instrumentsFeature, jerkFeature, magnitudeFeature, variableFeature, axisFeature)
+dtTidyDataSet <- dtFinal[, list(count = .N, average = mean(value)), by = key(dtFinal)]
+
+# Saving the tidy data set to file.
+write.table(dtTidyDataSet, "tidy.txt", sep="\t")
