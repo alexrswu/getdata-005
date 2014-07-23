@@ -41,7 +41,7 @@ Steps to work on this course project
 
 1. Create a folder and save the ```run_analysis.R``` into it.
 2. Set the working directory to the folder previously created.
-3. Run ```source("run_analysis.R")```, then it will download the dataset file and it will generate a new file ```tiny_data.txt``` in your working directory.
+3. Run ```source("run_analysis.R")```, then it will download the dataset file and it will generate a new file ```tiny.txt``` in your working directory.
 
 Dependencies
 ------------
